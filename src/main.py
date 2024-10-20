@@ -7,7 +7,7 @@ import os
 import threading
 
 # Replace with your Genius API token
-GENIUS_API_TOKEN = 'zMs-ogdbxt0F5CzmO52iLZ9A3jgj3ZZQWvNTNyTSm05x7z7yaLgWSlJFMa7cX92f'
+GENIUS_API_TOKEN = ''
 
 # Function to normalize text
 def normalize_text(text):
@@ -34,7 +34,7 @@ def get_artist_albums(artist_name):
    
     return albums
 
-# Function to get lyrics for all songs in an album (scraping approach)
+# Function to get lyrics for all songs in an album
 def get_album_songs_and_lyrics(album_url):
     response = requests.get(album_url)
     soup = BeautifulSoup(response.text, 'html.parser')
