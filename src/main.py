@@ -256,7 +256,7 @@ def plot_results():
 
     # Bar positions for each album
     bar_width = 0.35
-    bar_positions = range(len(unique_albums))
+    bar_positions = np.arange(len(unique_albums))  # Ensure consistent spacing between bars
 
     # Plot bars for each word group, with adjusted positions for each album
     for word in word_groups:
@@ -271,7 +271,7 @@ def plot_results():
     ax.set_ylabel('Word Occurrences')
     ax.set_title('Word Occurrences per Album')
 
-    # Remove the x-axis text labels (album names)
+    # Adjust the x-ticks for the bars
     ax.set_xticks(bar_positions)
     ax.set_xticklabels([''] * len(unique_albums))  # Remove the album text labels
 
@@ -284,17 +284,20 @@ def plot_results():
                 img = Image.open(BytesIO(response.content))
                 img.thumbnail((50, 50), Image.LANCZOS)  # Resize the album art
                 
-                # Create a small axis for each image directly below the bars
-                img_axis = fig.add_axes([i / len(unique_albums) + 0.455, -0.04, 0.1, 0.1], anchor='C', zorder=-1)
+                # Calculate the position of the image directly below the bar
+                x_position = (i + 0.5) / len(unique_albums)  # Centering each image below the corresponding bar
+                img_axis = fig.add_axes([x_position - 0.05, -0.1, 0.1, 0.1], anchor='C', zorder=-1)
                 img_axis.imshow(img)
                 img_axis.axis('off')  # Hide the axis around the image
             except Exception as e:
                 print(f"Error loading image for {album}: {e}")
 
+    # Adjust the layout to provide more space for the images
+    plt.subplots_adjust(bottom=0.03)  # Increase bottom margin to fit images better
     
-
     plt.legend(title='Words')
     plt.show()
+
 
 
 # Create GUI
