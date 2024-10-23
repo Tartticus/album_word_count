@@ -300,6 +300,48 @@ def plot_results():
 
 
 
+# Function to generate word cloud for selected album
+def generate_word_cloud():
+    artist_name = artist_entry.get().lower()  # Fetch artist from input and normalize it
+    album_name = album_dropdown.get()  # Fetch the selected album name
+
+    if not artist_name or not album_name:
+        messagebox.showerror("Error", "Please provide both artist and album.")
+        return
+
+    # Get the album ID from the album_map (already populated in the dropdown)
+    album_id = album_map.get(album_name)
+    if not album_id:
+        messagebox.showerror("Error", "Invalid album selected.")
+        return
+
+    # Fetch all tracks in the album using Spotify API
+    tracks = get_spotify_album_tracks(album_id)
+    if not tracks:
+        messagebox.showerror("Error", "No tracks found for the selected album.")
+        return
+
+    all_lyrics = ""  # Variable to hold all the lyrics from the album
+
+    for track_name in tracks:
+        # Fetch the lyrics for each track using Genius API
+        lyrics, _ = get_song_info_from_genius(track_name, artist_name)
+        if lyrics:
+            all_lyrics += lyrics + " "  # Concatenate the lyrics from each song
+
+    # Normalize the concatenated lyrics (remove special characters and convert to lowercase)
+    all_lyrics = re.sub(r'[^a-zA-Z\s]', '', all_lyrics).lower()
+
+    # Generate the word cloud from the combined lyrics
+    wordcloud = WordCloud(width=800, height=400, background_color='white').generate(all_lyrics)
+
+    # Display the word cloud in a new window
+    plt.figure(figsize=(10, 5))
+    plt.imshow(wordcloud, interpolation='bilinear')
+    plt.axis('off')
+    plt.show()
+    
+    
 # Create GUI
 root = tk.Tk()
 root.title("Lyrics Word Counter")
@@ -338,6 +380,11 @@ plot_button.grid(row=3, column=2, padx=5, pady=20)
 # Add Listbox to display selected albums and words
 listbox = tk.Listbox(root, width=50, height=10)
 listbox.grid(row=4, column=1, padx=5, pady=5)
+
+#Wordcloud
+wordcloud_button = tk.Button(root, text="Generate Word Cloud", command=generate_word_cloud)
+wordcloud_button.grid(row=4, column=2, padx=5, pady=20)
+
 
 # Start the GUI loop
 root.mainloop()
