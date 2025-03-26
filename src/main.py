@@ -10,11 +10,12 @@ from PIL import Image
 from io import BytesIO
 import base64
 import duckdb 
+import os
 
 def get_spotify_api_token():
     #spotify client ID and secret
-    CLIENT_ID = 'YOUR CLINENT ID'
-    CLIENT_SECRET = 'YOUR CLIENT SECRET'
+    CLIENT_ID = os.getenv("Spotify_Client_ID")
+    CLIENT_SECRET = os.getenv("Spotify_Client_Secret")
     
     # Spotify API token URL
     TOKEN_URL = 'https://accounts.spotify.com/api/token'
@@ -45,7 +46,7 @@ def get_spotify_api_token():
     response = requests.get('https://api.spotify.com/v1/artists/{artist_id}/albums', headers=headers)
     return access_token
 # Replace with your Genius API token and Spotify API token
-GENIUS_API_TOKEN = 'Your API Key'
+GENIUS_API_TOKEN = os.getenv("Rap_Genius_Client_ID")
 SPOTIFY_API_TOKEN = get_spotify_api_token()
 
 # Initialize an empty DataFrame to store results
