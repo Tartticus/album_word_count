@@ -1,11 +1,25 @@
 import os
 import lyricsgenius
-
+from spotify_utils import get_spotify_album_tracks
+import re
 
 # Replace with your Genius API token 
 GENIUS_ACCESS_TOKEN = os.getenv("Rap_Genius_Access_Token")
 genius = lyricsgenius.Genius(GENIUS_ACCESS_TOKEN)
 
+
+
+def normalize_text(text):
+    # Lowercase everything
+    text = text.lower()
+    
+    # Remove punctuation/special characters
+    text = re.sub(r'[^a-z0-9\s]', '', text)
+
+    # Replace multiple spaces with one
+    text = re.sub(r'\s+', ' ', text).strip()
+    
+    return text
 
 # Function to search for lyrics on Genius using song names and get album art
 def get_song_info_from_genius(song_name, artist_name):

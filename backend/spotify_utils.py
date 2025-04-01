@@ -1,3 +1,10 @@
+import os
+import requests
+from io import BytesIO
+import base64
+import re
+
+
 def get_spotify_api_token():
     #spotify client ID and secret
     CLIENT_ID = os.getenv("Spotify_Client_ID")
@@ -70,9 +77,8 @@ def get_spotify_albums(artist_id):
     response = requests.get(albums_url, headers=headers)
 
     if response.status_code == 200:
-        albums = response.json()["items"]
-        album_map = {album["name"]: album["id"] for album in albums}
-        return album_map
+        albums = response.json()
+        return albums
     return None
 
 
