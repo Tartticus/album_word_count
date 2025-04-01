@@ -1,5 +1,4 @@
 import requests
-from bs4 import BeautifulSoup
 import re
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -11,9 +10,11 @@ import os
 import lyricsgenius
 import numpy as np
 from flask import Flask, request, jsonify
-from flask_cors import CORS  # Allow frontend to access the backend
+from flask_cors import CORS
+
 app = Flask(__name__)
-CORS(app)
+CORS(app)  # allows TSX to talk to Flask backend
+
 
 def get_spotify_api_token():
     #spotify client ID and secret
@@ -50,10 +51,9 @@ def get_spotify_api_token():
     return access_token
 
 
-# Replace with your Genius API token and Spotify API token
+# Replace with your Genius API token 
 GENIUS_ACCESS_TOKEN = os.getenv("Rap_Genius_Access_Token")
-lyricsgenius.Genius(GENIUS_ACCESS_TOKEN )
-
+genius = lyricsgenius.Genius(GENIUS_ACCESS_TOKEN)
 
 
 SPOTIFY_API_TOKEN = get_spotify_api_token()
@@ -63,7 +63,7 @@ df = pd.DataFrame(columns=['Artist', 'Album', 'Word', 'Count', 'Album Art'])
 
 
 # Duck DB Database for faster retrieval
-con = duckdb.connect(database='lyrics_cache1.db')  # Persistent DuckDB database
+con = duckdb.connect(database='lyrics_cache.db')  # Persistent DuckDB database
 con.execute('''
     CREATE TABLE IF NOT EXISTS counts (
     Artist TEXT,
@@ -80,8 +80,9 @@ con.execute('''
 
 # Function to normalize text (remove special characters and make it lowercase)
 def normalize_text(text):
-    text = re.sub(r'[^a-zA-Z0-9 ]', '', text)
-    return text.lower()
+    text = text.lower()
+    text = re.sub(r'[^a-z0-9\s]', '', text)
+    return text
 
 # Function to search for an artist and get their ID on Spotify
 def get_spotify_artist_id(artist_name):
@@ -128,57 +129,33 @@ def get_spotify_album_tracks(album_id):
 
 # Function to search for lyrics on Genius using song names and get album art
 def get_song_info_from_genius(song_name, artist_name):
-    headers = {
-        'Authorization': f'Bearer {GENIUS_ACCESS_TOKEN}'
-    }
-    search_url = f"https://api.genius.com" + "/search"
-    query = f"{song_name} {artist_name}"
-    params = {'q' : query}
-    response = requests.get(search_url, headers=headers, params=params)
-    
-    if response.status_code == 200:
-        hits = response.json()["response"]["hits"]
-        if hits:
-            song_url = hits[0]["result"]["url"]
-            album_art_url = hits[0]["result"]["song_art_image_url"]
-            return get_song_lyrics(song_url), album_art_url
-    return "", None
-
-# Function to scrape song lyrics from a Genius song URL
-def get_song_lyrics(song_url):
-    page = requests.get(song_url)
-    soup = BeautifulSoup(page.text, 'html.parser')
-    lyrics_div = soup.find('div', class_='lyrics') or soup.find('div', class_='Lyrics__Root-sc-1ynbvzw-0')
-    return lyrics_div.get_text() if lyrics_div else ""
+    try:
+        song = genius.search_song(song_name, artist_name)
+        if song:
+            lyrics = song.lyrics
+            album_art_url = song.song_art_image_url
+            return lyrics, album_art_url
+        else:
+            return "", None
+    except Exception as e:
+        print(f"Error fetching song from Genius: {e}")
+        return "", None
 
 # Function to count occurrences of a word in an album's lyrics and get album art
-@app.route("/count-word", methods=["POST"])
-def count_word():
-    data = request.get_json()
-    artist = data.get("artist")
-    album_id = data.get("albumId")
-    word = data.get("word")
+def count_word_occurrences(album_id, artist_name, word):
+    tracks = get_spotify_album_tracks(album_id)
+    if not tracks:
+        return 0, None
 
-    # Get album name (optional but cleaner)
-    album_name = ""
-    headers = {'Authorization': f'Bearer {SPOTIFY_API_TOKEN}'}
-    album_response = requests.get(f"https://api.spotify.com/v1/albums/{album_id}", headers=headers)
-    if album_response.status_code == 200:
-        album_name = album_response.json().get("name", "")
-
-    # Check cache
-    cached = check_duckdb_cache(artist, album_name, word)
-    if cached:
-        count, album_art = cached
-    else:
-        count, album_art = count_word_occurrences(album_id, artist, word)
-        store_in_duckdb(artist, album_name, word, count, album_art)
-
-    return jsonify({
-        "count": count,
-        "album": album_name,
-        "albumArt": album_art
-    })
+    word_count = 0
+    album_art = None
+    for track_name in tracks:
+        lyrics, track_album_art = get_song_info_from_genius(track_name, artist_name)
+        word_count += normalize_text(lyrics).split().count(normalize_text(word))
+        if track_album_art and not album_art:  # Get album art from the first track
+            album_art = track_album_art
+    
+    return word_count, album_art
 
 ##### DB SECTION #######3
 
@@ -203,3 +180,5 @@ def store_in_duckdb(artist_name, album_name, word, count, album_art):
         "INSERT INTO counts (Artist, Album, Word, Count, Album_Art) VALUES (?, ?, ?, ?, ?)",
         [artist_name, album_name, word, count, album_art_url]
     )
+
+
