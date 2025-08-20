@@ -8,6 +8,7 @@ import os
 
 
 
+
 # Initialize an empty DataFrame to store results
 df = pd.DataFrame(columns=['Artist', 'Album', 'Word', 'Count', 'Album Art'])
 

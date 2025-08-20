@@ -2,9 +2,12 @@ import os
 import lyricsgenius
 from spotify_utils import get_spotify_album_tracks
 import re
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Replace with your Genius API token 
-GENIUS_ACCESS_TOKEN = os.getenv("Rap_Genius_Access_Token")
+GENIUS_ACCESS_TOKEN = os.getenv("GENIUS_ACCESS_TOKEN")
 genius = lyricsgenius.Genius(GENIUS_ACCESS_TOKEN)
 
 

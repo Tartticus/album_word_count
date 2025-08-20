@@ -3,11 +3,13 @@ import requests
 from io import BytesIO
 import base64
 import re
+from dotenv import load_dotenv
 
+load_dotenv()
 
 def get_spotify_api_token():
     #spotify client ID and secret
-    CLIENT_ID = os.getenv("Spotify_Client_ID")
+    CLIENT_ID = os.getenv("SPOTIFY_CLIENT_ID")
     CLIENT_SECRET = os.getenv("Spotify_Client_Secret")
     
     # Spotify API token URL
@@ -30,14 +32,15 @@ def get_spotify_api_token():
     if response.status_code == 200:
         token_response = response.json()
         access_token = token_response['access_token']
+        headers = {
+        'Authorization': f'Bearer {access_token}'
+        }
+        response = requests.get('https://api.spotify.com/v1/artists/{artist_id}/albums', headers=headers)
+        return access_token
+
         print(f"Access Token: {access_token}")
     else:
-        print(f"Failed to get token. Status code: {response.status_code}")
-    headers = {
-        'Authorization': f'Bearer {access_token}'
-    }
-    response = requests.get('https://api.spotify.com/v1/artists/{artist_id}/albums', headers=headers)
-    return access_token
+        print(f"Failed to get token. Status code: {response.status_code}") 
 
 
 #Replace with your api token

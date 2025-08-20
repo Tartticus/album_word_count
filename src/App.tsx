@@ -37,24 +37,6 @@ interface WordCount {
   albumArt: string;
 }
 
-const clientId = import.meta.env.VITE_SPOTIFY_CLIENT_ID;
-const clientSecret = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET;
-
-const getSpotifyToken = async () => {
-  const authString = btoa(`${clientId}:${clientSecret}`);
-  
-  const response = await fetch('https://accounts.spotify.com/api/token', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Basic ${authString}`,
-    },
-    body: 'grant_type=client_credentials',
-  });
-
-  const data = await response.json();
-  return data.access_token;
-};
 
 // Generate a different color for each word
 const generateColor = (index: number) => {
@@ -87,7 +69,7 @@ function App() {
     setError('');
     try {
       const response = await fetch(
-        `${import.meta.env.VITE_API_BASE_URL}/albums`,
+        `http://localhost:5000/albums`,
         {
           method: 'POST',
           headers: {
@@ -116,12 +98,57 @@ function App() {
     }
   };
 
+const getLyrics = async (artist: string, track: string) => {
+    try {
+      const searchUrl = `https://api.genius.com/search?q=${encodeURIComponent(`${artist} ${track}`)}`;
+      const searchResponse = await fetch(searchUrl, {
+        headers: {
+          'Authorization': `Bearer BLtzK4rzDYkeUgeYEH4hDpagB08odDYmU45WXH715AvhEMs8IT42hlqdmGJM8JyL`,
+        },
+      });
+
+      if (!searchResponse.ok) {
+        return '';
+      }
+
+      const searchData = await searchResponse.json();
+      const songUrl = searchData.response.hits[0]?.result.url;
+
+      if (!songUrl) return '';
+
+      const pageResponse = await fetch(songUrl);
+      const html = await pageResponse.text();
+      const lyricsMatch = html.match(/<div[^>]*class="[^"]*Lyrics__Container[^"]*"[^>]*>([\s\S]*?)<\/div>/);
+      return lyricsMatch ? lyricsMatch[1].replace(/<[^>]*>/g, '') : '';
+    } catch (error) {
+      console.error('Error fetching lyrics:', error);
+      return '';
+    }
+  };
+
+
   const addWord = () => {
     if (newWord && words.length < 6 && !words.includes(newWord)) {
       setWords([...words, newWord]);
       setNewWord('');
     }
   };
+
+  const getSpotifyToken = async () => {
+    const response = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${btoa('56d3b4e5526845a09849a6757a0e7089:4d6a6149f01240d589f2b9f7738a5159')}`,
+      },
+      body: 'grant_type=client_credentials',
+    });
+
+    const data = await response.json();
+    return data.access_token;
+  };
+
+
 
   const removeWord = (wordToRemove: string) => {
     setWords(words.filter(w => w !== wordToRemove));
@@ -148,7 +175,7 @@ function App() {
         setCountLoading(album.id);
         try {
           const response = await fetch(
-            `${import.meta.env.VITE_API_BASE_URL}/count-word`,
+            `http://localhost:5000/count-word`,
             {
               method: 'POST',
               headers: {

@@ -3,7 +3,9 @@ from flask_cors import CORS
 from spotify_utils import get_spotify_artist_id, get_spotify_albums
 from rap_genius_utils import get_song_info_from_genius, count_word_occurrences
 from duckdb_utils import check_duckdb_cache, store_in_duckdb
+from dotenv import load_dotenv
 
+load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
