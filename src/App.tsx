@@ -130,7 +130,7 @@ function App() {
       }
       
       setAlbums(data.albums.filter((album: Album) => album.images?.length > 0));
-      setSelectedAlbums([]);
+      
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to find artist');
     } finally {

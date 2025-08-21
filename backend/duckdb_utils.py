@@ -4,19 +4,20 @@ from io import BytesIO
 import base64
 import duckdb 
 import os
-
+from datetime import datetime
 
 
 
 
 # Initialize an empty DataFrame to store results
-df = pd.DataFrame(columns=['Artist', 'Album', 'Word', 'Count', 'Album Art'])
+df = pd.DataFrame(columns=['Datetime','Artist', 'Album', 'Word', 'Count', 'Album Art'])
 
 
 # Duck DB Database for faster retrieval
 con = duckdb.connect(database='lyrics_cache.db')  # Persistent DuckDB database
 con.execute('''
     CREATE TABLE IF NOT EXISTS counts (
+    Datetime TIMESTAMP,        
     Artist TEXT,
     Album TEXT,
     Word TEXT,
@@ -48,8 +49,9 @@ def store_in_duckdb(artist_name, album_name, word, count, album_art):
     con = duckdb.connect(database='lyrics_cache.db') 
     # Ensure album_art is a valid URL, otherwise insert NULL
     album_art_url = album_art if album_art and album_art.startswith('http') else None
+    datetime = datetime.now()
     con.execute(
-        "INSERT INTO counts (Artist, Album, Word, Count, Album_Art) VALUES (?, ?, ?, ?, ?)",
-        [artist_name, album_name, word, count, album_art_url]
+        "INSERT INTO counts (Datetime, Artist, Album, Word, Count, Album_Art) VALUES (?, ?, ?, ?, ?)",
+        [datetime, artist_name, album_name, word, count, album_art_url]
     )
     con.close()

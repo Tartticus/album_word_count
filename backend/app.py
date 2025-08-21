@@ -6,6 +6,7 @@ from duckdb_utils import check_duckdb_cache, store_in_duckdb
 from dotenv import load_dotenv
 
 load_dotenv()
+
 app = Flask(__name__)
 CORS(app)
 
@@ -25,8 +26,13 @@ def get_albums():
         return jsonify({"error": "No albums found"}), 404
 
     # Convert to JSON-friendly format
-
-    album_map = []
+    try:
+        album_map =  existing_albums
+    except Exception as e:
+        existing_albums = None
+        album_map = []
+        pass
+        
     for album in albums.get("items", []):
         if album.get("images"):
             album_map.append({
@@ -34,7 +40,7 @@ def get_albums():
                 "name": album["name"],
                 "images": album["images"]  # this is already an array of {url, height, width}
             })
-
+    existing_albums = album_map
     return jsonify({"albums": album_map})
 
 @app.route("/count-word", methods=["POST"])
