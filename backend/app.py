@@ -44,26 +44,32 @@ def count_word():
     artist = data.get("artist", "").strip().lower()
     album_id = data.get("albumId")
     album_name = data.get("albumName")
-    word = data.get("word", "").strip().lower()
+    words = data.get("words", [])
 
-    if not all([artist, album_id, album_name, word]):
+
+    if not isinstance(words, list):
+        return jsonify({"error": "`words` must be a list"}), 400
+    
+    if not all([artist, album_id, album_name]):
         return jsonify({"error": "Missing required parameters"}), 400
-
-    # Check DuckDB cache
-    cached = check_duckdb_cache(artist, album_name, word)
-    if cached:
-        count, album_art = cached
-    else:
-        count, album_art = count_word_occurrences(album_id, artist, word)
-        store_in_duckdb(artist, album_name, word, count, album_art)
-
-    return jsonify({
-        "artist": artist,
-        "album": album_name,
-        "word": word,
-        "count": count,
-        "albumArt": album_art
-    })
+    
+    for word in words:
+        word.strip().lower()
+        # Check DuckDB cache
+        cached = check_duckdb_cache(artist, album_name, word)
+        if cached:
+            count, album_art = cached
+        else:
+            count, album_art = count_word_occurrences(album_id, artist, word)
+            store_in_duckdb(artist, album_name, word, count, album_art)
+    
+        return jsonify({
+            "artist": artist,
+            "album": album_name,
+            "word": word,
+            "count": count,
+            "albumArt": album_art
+        })
 
 if __name__ == "__main__":
     app.run(debug=True)

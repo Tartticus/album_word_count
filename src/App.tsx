@@ -171,7 +171,7 @@ const getLyrics = async (artist: string, track: string) => {
     const newCounts: WordCount[] = [];
     
     for (const album of selectedAlbums) {
-      for (const word of words) {
+         {
         setCountLoading(album.id);
         try {
           const response = await fetch(
@@ -185,7 +185,7 @@ const getLyrics = async (artist: string, track: string) => {
                 artist,
                 albumId: album.id,
                 albumName: album.name,
-                word,
+                words,
               }),
             }
           );
@@ -200,7 +200,7 @@ const getLyrics = async (artist: string, track: string) => {
           newCounts.push({
             artist,
             album: album.name,
-            word,
+            word: data.word,
             count: data.count,
             albumArt: album.images[0]?.url
           });
