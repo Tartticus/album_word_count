@@ -51,10 +51,10 @@ def store_in_duckdb(artist_name, album_name, word, count, album_art):
     con = duckdb.connect(database='./lyrics_cache.db') 
     # Ensure album_art is a valid URL, otherwise insert NULL
     album_art_url = album_art if album_art and album_art.startswith('http') else None
-    datetime = datetime.now()
+    datetime_now = datetime.now()
     con.execute(
-        "INSERT INTO counts (Datetime, Artist, Album, Word, Count, Album_Art) VALUES (?, ?, ?, ?, ?)",
-        [datetime, artist_name, album_name, word, count, album_art_url]
+        "INSERT INTO counts (Datetime, Artist, Album, Word, Count, Album_Art) VALUES (?, ?, ?, ?, ?, ?)",
+        [datetime_now, artist_name, album_name, word, count, album_art_url]
     )
     con.close()
     

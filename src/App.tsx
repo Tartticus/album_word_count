@@ -37,6 +37,13 @@ interface WordCount {
   albumArt: string;
 }
 
+interface ProgressUpdate {
+  word: string;
+  album: string;
+  currentSong: string;
+  songIndex: number;
+  totalSongs: number;
+}
 
 // Predefined color options
 const colorOptions = [
@@ -100,7 +107,7 @@ function App() {
   const [wordCounts, setWordCounts] = useState<WordCount[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [countLoading, setCountLoading] = useState<string | null>(null);
-  const [searchProgress, setSearchProgress] = useState<{word: string, song: string} | null>(null);
+  const [searchProgress, setSearchProgress] = useState<ProgressUpdate | null>(null);
   const [error, setError] = useState('');
   const [showResults, setShowResults] = useState(false);
   const [backgroundGradient, setBackgroundGradient] = useState(backgroundOptions[0].gradient);
@@ -137,35 +144,6 @@ function App() {
       setSearchLoading(false);
     }
   };
-
-const getLyrics = async (artist: string, track: string) => {
-    try {
-      const searchUrl = `https://api.genius.com/search?q=${encodeURIComponent(`${artist} ${track}`)}`;
-      const searchResponse = await fetch(searchUrl, {
-        headers: {
-          'Authorization': `Bearer BLtzK4rzDYkeUgeYEH4hDpagB08odDYmU45WXH715AvhEMs8IT42hlqdmGJM8JyL`,
-        },
-      });
-
-      if (!searchResponse.ok) {
-        return '';
-      }
-
-      const searchData = await searchResponse.json();
-      const songUrl = searchData.response.hits[0]?.result.url;
-
-      if (!songUrl) return '';
-
-      const pageResponse = await fetch(songUrl);
-      const html = await pageResponse.text();
-      const lyricsMatch = html.match(/<div[^>]*class="[^"]*Lyrics__Container[^"]*"[^>]*>([\s\S]*?)<\/div>/);
-      return lyricsMatch ? lyricsMatch[1].replace(/<[^>]*>/g, '') : '';
-    } catch (error) {
-      console.error('Error fetching lyrics:', error);
-      return '';
-    }
-  };
-
 
   const addWord = () => {
     if (newWord && words.length < 6 && !words.find(w => w.text === newWord)) {
@@ -214,59 +192,94 @@ const getLyrics = async (artist: string, track: string) => {
     
     setShowResults(true);
     setSearchProgress(null);
-    const newCounts: WordCount[] = [];
+    setWordCounts([]); // Clear previous results
     
     for (const album of selectedAlbums) {
-        setCountLoading(album.id);
-        
-        // Get album tracks first
-        const token = await getSpotifyToken();
-        const tracksResponse = await fetch(`https://api.spotify.com/v1/albums/${album.id}/tracks`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        });
-        
-        if (tracksResponse.ok) {
-          const tracksData = await tracksResponse.json();
-          const tracks = tracksData.items;
+      setCountLoading(album.id);
+      
+      try {
+        // Process each word for this album using the backend
+        for (const word of words) {
+          setSearchProgress({ 
+            word: word.text, 
+            album: album.name,
+            currentSong: 'Fetching track list...',
+            songIndex: 0,
+            totalSongs: 0
+          });
           
-          // Process each word for this album
-          for (const word of words) {
-            let totalCount = 0;
-            
-            // Process each track
-            for (const track of tracks) {
-              setSearchProgress({ word: word.text, song: track.name });
+          // Use the streaming endpoint for real-time updates
+          const response = await fetch('http://localhost:5000/count-word-stream', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              artist: artist,
+              albumId: album.id,
+              albumName: album.name,
+              words: [word.text]
+            }),
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          
+          // Handle streaming response
+          const reader = response.body?.getReader();
+          const decoder = new TextDecoder();
+          
+          if (reader) {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
               
-              // Add a small delay to show the progress
-              await new Promise(resolve => setTimeout(resolve, 500));
+              const chunk = decoder.decode(value);
+              const lines = chunk.split('\n');
               
-              const lyrics = await getLyrics(artist, track.name);
-              const normalizedLyrics = lyrics.toLowerCase().replace(/[^a-z0-9\s]/g, '');
-              const wordCount = normalizedLyrics.split(/\s+/).filter(w => w === word.text.toLowerCase()).length;
-              totalCount += wordCount;
+              for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                  try {
+                    const data = JSON.parse(line.slice(6));
+                    
+                    if (data.progress) {
+                      // Update progress
+                      setSearchProgress({
+                        word: word.text,
+                        album: album.name,
+                        currentSong: data.progress.currentSong,
+                        songIndex: data.progress.songIndex,
+                        totalSongs: data.progress.totalSongs
+                      });
+                    } else if (data.completed) {
+                      // Final result
+                      setWordCounts(prev => {
+                        const filtered = prev.filter(wc => !(wc.album === album.name && wc.word === word.text));
+                        return [...filtered, {
+                          artist: data.artist,
+                          album: data.album,
+                          word: data.word,
+                          count: data.count,
+                          albumArt: data.albumArt || album.images[0]?.url
+                        }];
+                      });
+                    }
+                  } catch (e) {
+                    console.error('Error parsing progress data:', e);
+                  }
+                }
+              }
             }
-            
-            newCounts.push({
-              artist,
-              album: album.name,
-              word: word.text,
-              count: totalCount,
-              albumArt: album.images[0]?.url
-            });
           }
         }
-        
-        try {
-          // Backend call removed - now using direct processing above
-        } catch (err) {
-          setError('Failed to count words');
-        }
+      } catch (err) {
+        console.error('Error processing album:', err);
+        setError(`Failed to process album: ${album.name}`);
+      }
     }
     
     setSearchProgress(null);
-    setWordCounts(newCounts);
     setCountLoading(null);
   };
 
@@ -624,8 +637,24 @@ const getLyrics = async (artist: string, track: string) => {
                   <div className="text-sm">
                     Searching for "<span className="font-semibold">{searchProgress.word}</span>" in
                   </div>
-                  <div className="text-xs text-blue-200 mt-1 truncate">
-                    {searchProgress.song}
+                  <div className="text-xs text-blue-200 mt-1">
+                    <div className="font-medium">{searchProgress.album}</div>
+                    <div className="truncate mt-1">{searchProgress.currentSong}</div>
+                    {searchProgress.totalSongs > 0 && (
+                      <div className="mt-2">
+                        <div className="text-xs mb-1">
+                          {searchProgress.songIndex} / {searchProgress.totalSongs} songs
+                        </div>
+                        <div className="w-full bg-blue-800 rounded-full h-2">
+                          <div 
+                            className="bg-blue-400 h-2 rounded-full transition-all duration-300"
+                            style={{ 
+                              width: `${(searchProgress.songIndex / searchProgress.totalSongs) * 100}%` 
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

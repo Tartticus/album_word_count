@@ -39,17 +39,32 @@ def get_song_info_from_genius(song_name, artist_name):
         return "", None
 
 # Function to count occurrences of a word in an album's lyrics and get album art
-def count_word_occurrences(album_id, artist_name, word):
+def count_word_occurrences(album_id, artist_name, word, progress_callback=None):
     tracks = get_spotify_album_tracks(album_id)
     if not tracks:
         return 0, None
 
     word_count = 0
     album_art = None
-    for track_name in tracks:
+    total_tracks = len(tracks)
+    for idx, track_name in enumerate(tracks, 1):
+        if progress_callback:
+            try:
+                progress_callback(track_name, idx, total_tracks)
+            except:
+                pass  # Ignore generator issues
+                
         lyrics, track_album_art = get_song_info_from_genius(track_name, artist_name)
-        word_count += normalize_text(lyrics).split().count(normalize_text(word))
+        if lyrics:
+            # Normalize both the lyrics and the word for comparison
+            normalized_lyrics = normalize_text(lyrics)
+            normalized_word = normalize_text(word)
+            # Split lyrics into words and count occurrences
+            lyrics_words = normalized_lyrics.split()
+            word_count += lyrics_words.count(normalized_word)
+            print(f"Track: {track_name}, Word '{word}' found {lyrics_words.count(normalized_word)} times")
         if track_album_art and not album_art:  # Get album art from the first track
             album_art = track_album_art
     
+    print(f"Total count for '{word}' in album: {word_count}")
     return word_count, album_art
