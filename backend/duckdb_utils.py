@@ -14,7 +14,7 @@ df = pd.DataFrame(columns=['Datetime','Artist', 'Album', 'Word', 'Count', 'Album
 
 
 # Duck DB Database for faster retrieval
-con = duckdb.connect(database='lyrics_cache.db')  # Persistent DuckDB database
+con = duckdb.connect(database=r'./lyrics_cache.db')  # Persistent DuckDB database
 con.execute('''
     CREATE TABLE IF NOT EXISTS counts (
     Datetime TIMESTAMP,        
@@ -27,11 +27,13 @@ con.execute('''
 )
 
 ''')
+con.execute("DELETE FROM counts WHERE Count = 0")
+df = con.execute("SELECT * FROM counts").df()
 con.close()
 
 # Function to check if a result exists in DuckDB
 def check_duckdb_cache(artist_name, album_name, word):
-    con = duckdb.connect(database='lyrics_cache.db') 
+    con = duckdb.connect(database=r'./lyrics_cache.db') 
     result = con.execute(
         "SELECT Count, Album_Art FROM counts WHERE Artist = ? AND Album = ? AND Word = ?",
         [artist_name, album_name, word]
@@ -46,7 +48,7 @@ def check_duckdb_cache(artist_name, album_name, word):
 
 # Function to store results in DuckDB including album art
 def store_in_duckdb(artist_name, album_name, word, count, album_art):
-    con = duckdb.connect(database='lyrics_cache.db') 
+    con = duckdb.connect(database='./lyrics_cache.db') 
     # Ensure album_art is a valid URL, otherwise insert NULL
     album_art_url = album_art if album_art and album_art.startswith('http') else None
     datetime = datetime.now()
@@ -55,3 +57,5 @@ def store_in_duckdb(artist_name, album_name, word, count, album_art):
         [datetime, artist_name, album_name, word, count, album_art_url]
     )
     con.close()
+    
+    
